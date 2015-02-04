@@ -1161,7 +1161,73 @@ void testFonts(){
 
 
 
+void doTests()
+{
+	char str[12] = "hello world!";
+	int i = 0;
+	
+	fillScreen(BLUE);
+	//setCursor(5,5);
+	setTextColor(WHITE, BLACK);
+	setTextSize(1);
+	
+	setCursor(0,0);
+		for (i = 0; i < strlen(str);i++)
+		{
+			write(str[i]);
+		}
+		
+		SysCtlDelay(SysCtlClockGet()/3);
+		
+		
+		write('\n');
+		
+		testFonts();
+		SysCtlDelay(SysCtlClockGet()/3);
+		
+		testlines(YELLOW);
+  SysCtlDelay(SysCtlClockGet()/3/2);    
+ 
+  // optimized lines
+  testfastlines(RED, BLUE);
+  SysCtlDelay(SysCtlClockGet()/3/2);    
 
+  testdrawrects(GREEN);
+  SysCtlDelay(SysCtlClockGet()/3);
+
+  testfillrects(YELLOW, MAGENTA);
+  SysCtlDelay(SysCtlClockGet()/3);
+	
+	
+	testfillcircles(10, BLUE);
+  testdrawcircles(10, WHITE);
+  SysCtlDelay(SysCtlClockGet()/3);
+   
+  testroundrects();
+  SysCtlDelay(SysCtlClockGet()/3/2);
+  
+  testtriangles();
+  SysCtlDelay(SysCtlClockGet()/3/2);
+	
+		fillpixelbypixel(BLACK,128,128);
+		fillpixelbypixel(BLUE,128,128);
+		fillpixelbypixel(RED,128,128);
+		fillpixelbypixel(GREEN,128,128);
+		fillpixelbypixel(CYAN,128,128);
+		fillpixelbypixel(MAGENTA,128,128);
+		fillpixelbypixel(YELLOW,128,128);
+		fillpixelbypixel(WHITE,128,128);
+		
+		
+		fillpixelbypixelSide(BLACK,128,128);
+		fillpixelbypixelSide(BLUE,128,128);
+		fillpixelbypixelSide(RED,128,128);
+		fillpixelbypixelSide(GREEN,128,128);
+		fillpixelbypixelSide(CYAN,128,128);
+		fillpixelbypixelSide(MAGENTA,128,128);
+		fillpixelbypixelSide(YELLOW,128,128);
+		fillpixelbypixelSide(WHITE,128,128);
+}
 
 
 
