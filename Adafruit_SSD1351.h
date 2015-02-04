@@ -36,6 +36,7 @@
 #include "driverlib/rom.h"
 #include <math.h>
 #include "glcdfont.c"
+#include <string.h>
 
 #ifdef __SAM3X8E__
     typedef volatile RwReg PortReg;
@@ -205,7 +206,8 @@ void   write(uint8_t);
   uint8_t getRotation(void);
 
 // Tests
-		
+void doTests();
+	
 void fillpixelbypixel(uint16_t color, int16_t width, int16_t height);
 void fillpixelbypixelSide(uint16_t color, int16_t width, int16_t height);
 
