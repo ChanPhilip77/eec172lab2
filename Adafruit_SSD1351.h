@@ -192,6 +192,7 @@ void
     drawChar(int16_t x, int16_t y, unsigned char c, uint16_t color,
       uint16_t bg, uint8_t size),
     setCursor(int16_t x, int16_t y),
+		resetCursor(int16_t x, int16_t y, bool send),
 //    setTextColor(uint16_t c),
     setTextColor(uint16_t c, uint16_t bg),
     setTextSize(uint8_t s),
@@ -202,7 +203,8 @@ void   write(uint8_t);
 
   int16_t height(void);
   int16_t width(void);
-
+	int16_t get_y(void);
+	int16_t get_x(void);
   uint8_t getRotation(void);
 
 // Tests
