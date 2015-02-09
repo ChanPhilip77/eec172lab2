@@ -90,9 +90,12 @@ static int error_sequence = 0;
 static int error_address = 0;
 static int display_now = 0;
 static int valid = 0;
+
 static int send_key = 0;
 static int send_cursor_y = 0;
 static int send_cursor_x = 0;
+volatile char * Tx_ptr;
+volatile bool Tx_done;
 
 static int receive_cursor_y = 66;
 static int receive_cursor_x = 0;
@@ -118,9 +121,10 @@ __error__(char *pcFilename, uint32_t ui32Line)
 #define WHITE           0xFFFF
 
 void ConfigureUART(void);
+void ConfigureUART1(void);
 void UART1IntHandler(void);
 void IR_Handler (void);
-
+void SendStr( char * Tx_buf);
 void decode(int times[], int size);
 
 void Timer1A_Int(void);
@@ -133,6 +137,7 @@ char char_selector(int code, int reps);
 int main(void)
 {
 		ConfigureUART();
+		ConfigureUART1();
     ROM_FPULazyStackingEnable();
 		int ir_input;
 		char displayed_text;
@@ -280,6 +285,7 @@ int main(void)
 					write(text_msg[i]);
 				}
 				write('\n');
+				SendStr(text_msg);
 				send_cursor_x = get_x();
 				send_cursor_y = get_y();
 				send_key = 0;
@@ -354,16 +360,56 @@ void ConfigureUART(void)
     UARTStdioConfig(0, 115200, 16000000);
 }
 
+void ConfigureUART1(void) {
+	
+		// Enable the GPIO Peripheral used by the UART1 and enable UART1
+    //
+    ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOB);  
+    ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_UART1);
+
+	
+    // Configure GPIO Pins for UART mode.
+    //
+    ROM_GPIOPinConfigure(GPIO_PB0_U1RX);
+    ROM_GPIOPinConfigure(GPIO_PB1_U1TX);
+    ROM_GPIOPinTypeUART(GPIO_PORTB_BASE, GPIO_PIN_0 | GPIO_PIN_1);
+
+    // Use the internal 16MHz oscillator as the UART clock source.
+    //
+    UARTClockSourceSet(UART1_BASE, UART_CLOCK_PIOSC);
+
+    // Initialize UART1
+    //
+		ROM_UARTConfigSetExpClk(UART1_BASE, 16000000, 115200,
+                            (UART_CONFIG_WLEN_8 | UART_CONFIG_STOP_ONE |
+                             UART_CONFIG_PAR_NONE));
+}
+
 void UART1IntHandler(void) {
     uint32_t ui32Status;
 		receive_index = 0;
 
 
     ui32Status = ROM_UARTIntStatus(UART1_BASE, true);
-
-
+	
     ROM_UARTIntClear(UART1_BASE, ui32Status);
 
+	// send
+		while(ROM_UARTSpaceAvail(UART1_BASE))
+		{
+			if (*Tx_ptr) {
+
+				// We can use NonBlocking Put since we know space is available.
+			
+				ROM_UARTCharPutNonBlocking(UART1_BASE, *Tx_ptr++);
+			} else {
+				Tx_done = true;
+		    ROM_UARTIntDisable(UART1_BASE, UART_INT_TX);
+				break;
+			}
+		}
+	
+	// receive
     while(ROM_UARTCharsAvail(UART1_BASE))
     {
         ROM_UARTCharGet(receive_msg[receive_index]);
@@ -371,6 +417,22 @@ void UART1IntHandler(void) {
     }
 		received = true;
 		
+}
+
+void SendStr( char * Tx_buf) {
+
+		Tx_done = false;		// global flag used by ISR
+		Tx_ptr = Tx_buf;		// global pointer used by ISR
+		ROM_UARTIntDisable(UART1_BASE, UART_INT_TX);	// avoid critical section
+		while(ROM_UARTSpaceAvail(UART1_BASE))
+		{
+			if (*Tx_ptr) {
+				ROM_UARTCharPutNonBlocking(UART1_BASE, *Tx_ptr++);
+			} else {
+				break;
+			}
+		}
+    ROM_UARTIntEnable(UART1_BASE, UART_INT_TX);
 }
 
 
@@ -813,11 +875,11 @@ char char_selector(int code, int reps)
 		case CTRL_RIGHT:
 			break;
 		case CTRL_MUTE:
-			temp = '\r';
+			temp = 'NULL';
 			send_key = 1;
 			break;
 		case CTRL_ENTER:
-			temp = '\r';
+			temp = 'NULL';
 			send_key = 1;
 			break;
 		default:
