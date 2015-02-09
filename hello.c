@@ -91,6 +91,11 @@ static int error_address = 0;
 static int display_now = 0;
 static int valid = 0;
 static int send_key = 0;
+static int send_cursor_y = 0;
+static int send_cursor_x = 0;
+
+static int receive_cursor_y = 0;
+static int receive_cursor_x = 0;
 
 #ifdef DEBUG
 void
@@ -193,9 +198,10 @@ int main(void)
     }
 		
 		begin();
-		fillScreen(BLUE);
+		fillScreen(BLACK);
 		setTextColor(WHITE,BLACK);
 		setTextSize(1);
+		drawFastHLine(0,64, 128, MAGENTA);
 		
 		UARTprintf("Starting Program...\n\n");
 		
@@ -258,10 +264,23 @@ int main(void)
 			
 			if (send_key)	// if enter or mute has been pushed
 			{
+				
+//				fillRect(0,65,128,70,BLACK);	// for receiving side
+				if (send_cursor_y > 56)
+				{
+					fillRect(0,0,128,64,BLACK); // clear line
+					send_cursor_y = 0;
+					send_cursor_x = 0;
+				}
+				setCursor(send_cursor_x,send_cursor_y);
+				
 				for (int i = 0; i < char_num; i++)
 				{
 					write(text_msg[i]);
 				}
+				write('\n');
+				send_cursor_x = get_x();
+				send_cursor_y = get_y();
 				send_key = 0;
 				char_num = 0;
 			}
@@ -752,11 +771,11 @@ char char_selector(int code, int reps)
 		case CTRL_RIGHT:
 			break;
 		case CTRL_MUTE:
-			temp = '\n';
+			temp = '\r';
 			send_key = 1;
 			break;
 		case CTRL_ENTER:
-			temp = '\n';
+			temp = '\r';
 			send_key = 1;
 			break;
 		default:
