@@ -7,6 +7,19 @@
 //			PA7 - reset
 //			PB2 - IR output
 
+
+/*
+USAGE: 	Push buttons on IR remote. A character will display 
+				on the console depending on how many times you pushed
+				the button. If you push more than there are letters,
+				the number will display, ie. if you push button 2 4+
+				times, it will display 2 on the console.
+				
+				When you finish typing a message, press the Mute or
+				Enter button to send it to the oled.
+
+*/
+
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -77,6 +90,7 @@ static int error_sequence = 0;
 static int error_address = 0;
 static int display_now = 0;
 static int valid = 0;
+static int send_key = 0;
 
 #ifdef DEBUG
 void
@@ -114,6 +128,11 @@ int main(void)
     ROM_FPULazyStackingEnable();
 		int ir_input;
 		char displayed_text;
+		uint32_t pui32DataTx[NUM_SSI_DATA];
+		uint32_t pui32DataRx[NUM_SSI_DATA];
+    uint32_t ui32Index;
+		char text_msg[32] = "";
+		int char_num = 0;
 	
 	
     //
@@ -123,17 +142,28 @@ int main(void)
 
 
 		ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOB);
-
-
+		ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_SSI0);
+	
+		// Button detection timer
 		ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER0);
 		ROM_TimerConfigure(TIMER0_BASE, TIMER_CFG_PERIODIC);
 		ROM_TimerLoadSet(TIMER0_BASE, TIMER_A, SysCtlClockGet());
 		TimerEnable(TIMER0_BASE, TIMER_A);
-	
+		// character display timer
 		ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER1);
 		ROM_TimerConfigure(TIMER1_BASE, TIMER_CFG_ONE_SHOT);
 		ROM_TimerLoadSet(TIMER1_BASE, TIMER_A, SysCtlClockGet()*2);
-		//TimerEnable(TIMER1_BASE, TIMER_A);
+
+		// SSI0 Stuff
+		GPIOPinConfigure(GPIO_PA2_SSI0CLK);
+    GPIOPinConfigure(GPIO_PA3_SSI0FSS);
+    GPIOPinConfigure(GPIO_PA4_SSI0RX);
+    GPIOPinConfigure(GPIO_PA5_SSI0TX);
+		ROM_GPIOPinTypeSSI(GPIO_PORTA_BASE, GPIO_PIN_5 | GPIO_PIN_4 | GPIO_PIN_3 | GPIO_PIN_2);
+		GPIOPinTypeGPIOOutput(GPIO_PORTA_BASE, GPIO_PIN_6);
+		GPIOPinTypeGPIOOutput(GPIO_PORTA_BASE, GPIO_PIN_7);
+		ROM_SSIConfigSetExpClk(SSI0_BASE, SysCtlClockGet(), SSI_FRF_MOTO_MODE_0,
+                       SSI_MODE_MASTER, 1000000, 8);
 		
 		
 
@@ -155,9 +185,17 @@ int main(void)
 		TimerIntEnable(TIMER1_BASE, TIMER_TIMA_TIMEOUT);
 		
 		IntMasterEnable();
+		ROM_SSIEnable(SSI0_BASE);
 		
+
+    while(ROM_SSIDataGetNonBlocking(SSI0_BASE, &pui32DataRx[0]))
+    {
+    }
 		
-		
+		begin();
+		fillScreen(BLUE);
+		setTextColor(WHITE,BLACK);
+		setTextSize(1);
 		
 		UARTprintf("Starting Program...\n\n");
 		
@@ -172,6 +210,7 @@ int main(void)
 			ROM_SysCtlSleep();
 			
 			
+			// check which number pushed
 			if (done_flag == 1)
 			{
 				decode(times, count);
@@ -180,40 +219,51 @@ int main(void)
 				start_flag = 0;
 			}
 			
-			if(!display_now)	// if not in the process of displaying
+			// process character display
+			if(!display_now)	// if not displaying
 			{
 				if (print_code != 0 && valid == 1)	// if valid sequence found from button input
 				{	// if switching numbers, print digit immediately
 					if (last_print_code != 0 && print_code != last_print_code)
 					{
 						UARTprintf("%c",displayed_text);
+						text_msg[char_num] = displayed_text;
+						char_num++;
 						TimerEnable(TIMER1_BASE, TIMER_A);
 						ROM_TimerLoadSet(TIMER1_BASE, TIMER_A, SysCtlClockGet());
 						repetitions = 0;
 					}
-					else	// otherwise, reset the 3 second timer
+					else	// otherwise, reset the 1 second timer
 					{
 					
 						TimerEnable(TIMER1_BASE, TIMER_A);
 						ROM_TimerLoadSet(TIMER1_BASE, TIMER_A, SysCtlClockGet());
 					}
 					repetitions++;	// choose next character in set
-					displayed_text = char_selector(print_code,repetitions);
+					displayed_text = char_selector(print_code,repetitions);	// choose next char
 					last_print_code = print_code;
 					valid = 0;
-				}
+				}	// do nothing if invalid code
 			}
-			else
+			else	// if time is up, display text
 			{
-				UARTprintf("char %c\n",displayed_text);
-				/*UARTprintf("repts %i\n",repetitions);
-				UARTprintf("last code %i\n",last_print_code);
-				UARTprintf("current code %i\n",print_code);
-				UARTprintf("display? %i\n\n",print_code);*/
+				UARTprintf("%c",displayed_text);
+				text_msg[char_num] = displayed_text;
+				char_num++;
 				repetitions = 0;
 				last_print_code = 0;
 				print_code = 0;
 				display_now = 0;
+			}
+			
+			if (send_key)	// if enter or mute has been pushed
+			{
+				for (int i = 0; i < char_num; i++)
+				{
+					write(text_msg[i]);
+				}
+				send_key = 0;
+				char_num = 0;
 			}
 			
 			
@@ -703,9 +753,11 @@ char char_selector(int code, int reps)
 			break;
 		case CTRL_MUTE:
 			temp = '\n';
+			send_key = 1;
 			break;
 		case CTRL_ENTER:
 			temp = '\n';
+			send_key = 1;
 			break;
 		default:
 			temp = '?';
