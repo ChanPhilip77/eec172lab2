@@ -938,6 +938,11 @@ void setCursor(int16_t x, int16_t y) {
   cursor_y = y;
 }
 
+void resetCursor(int16_t x, int16_t y, bool send)
+{
+	
+}
+
 void setTextSize(uint8_t s) {
   textsize = (s > 0) ? s : 1;
 }
@@ -987,6 +992,17 @@ int16_t width(void){
 int16_t height(void){
   return _height;
 }
+
+int16_t get_y(void)
+{
+	return cursor_y;
+}
+
+int16_t get_x(void)
+{
+	return cursor_x;
+}
+
 
 void invertDisplay(bool i) {
   // Do nothing, must be subclassed if supported
