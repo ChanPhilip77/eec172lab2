@@ -94,8 +94,11 @@ static int send_key = 0;
 static int send_cursor_y = 0;
 static int send_cursor_x = 0;
 
-static int receive_cursor_y = 0;
+static int receive_cursor_y = 66;
 static int receive_cursor_x = 0;
+static char receive_msg[32] = "";
+static bool received = false;
+static int receive_index = 0;
 
 #ifdef DEBUG
 void
@@ -115,7 +118,7 @@ __error__(char *pcFilename, uint32_t ui32Line)
 #define WHITE           0xFFFF
 
 void ConfigureUART(void);
-
+void UART1IntHandler(void);
 void IR_Handler (void);
 
 void decode(int times[], int size);
@@ -263,9 +266,7 @@ int main(void)
 			}
 			
 			if (send_key)	// if enter or mute has been pushed
-			{
-				
-//				fillRect(0,65,128,70,BLACK);	// for receiving side
+			{	
 				if (send_cursor_y > 56)
 				{
 					fillRect(0,0,128,64,BLACK); // clear line
@@ -285,6 +286,28 @@ int main(void)
 				char_num = 0;
 			}
 			
+			if (received)
+			{
+				received = false;
+				if (receive_cursor_y > 120)
+				{
+					fillRect(0,65,128,70,BLACK);	// for receiving side
+					receive_cursor_y = 66;
+					receive_cursor_x = 0;
+				}
+				setCursor(receive_cursor_x,receive_cursor_y);
+				
+				for (int i = 0; i < receive_index; i++)
+				{
+					write(receive_msg[i]);
+					receive_msg[i] = 'NULL';	// clear char after write
+				}
+				write('\n');
+				receive_cursor_x = get_x();
+				receive_cursor_y = get_y();
+				
+				
+			}
 			
 			
 			
@@ -329,6 +352,25 @@ void ConfigureUART(void)
     // Initialize the UART for console I/O.
     //
     UARTStdioConfig(0, 115200, 16000000);
+}
+
+void UART1IntHandler(void) {
+    uint32_t ui32Status;
+		receive_index = 0;
+
+
+    ui32Status = ROM_UARTIntStatus(UART1_BASE, true);
+
+
+    ROM_UARTIntClear(UART1_BASE, ui32Status);
+
+    while(ROM_UARTCharsAvail(UART1_BASE))
+    {
+        ROM_UARTCharGet(receive_msg[receive_index]);
+				receive_index++;
+    }
+		received = true;
+		
 }
 
 
