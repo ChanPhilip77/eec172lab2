@@ -437,12 +437,15 @@ void SendStr( char * Tx_buf) {
 		ROM_UARTIntDisable(UART1_BASE, UART_INT_TX);	// avoid critical section
 		while(ROM_UARTSpaceAvail(UART1_BASE))
 		{
+			UARTprintf("test");
 			if (*Tx_ptr) {
 				ROM_UARTCharPutNonBlocking(UART1_BASE, *Tx_ptr++);
 			} else {
 				break;
 			}
+			
 		}
+		
     ROM_UARTIntEnable(UART1_BASE, UART_INT_RX | UART_INT_RT);
 }
 
@@ -886,11 +889,11 @@ char char_selector(int code, int reps)
 		case CTRL_RIGHT:
 			break;
 		case CTRL_MUTE:
-			temp = NULL;
+			temp = '\r';
 			send_key = 1;
 			break;
 		case CTRL_ENTER:
-			temp = NULL;
+			temp = '\r';
 			send_key = 1;
 			break;
 		default:
