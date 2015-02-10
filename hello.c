@@ -144,7 +144,7 @@ int main(void)
 		uint32_t pui32DataTx[NUM_SSI_DATA];
 		uint32_t pui32DataRx[NUM_SSI_DATA];
     uint32_t ui32Index;
-		char text_msg[32] = NULL;
+		char text_msg[32] = "";
 		int char_num = 0;
 	
 		*Tx_ptr = displayed_text;
@@ -437,7 +437,6 @@ void SendStr( char * Tx_buf) {
 		ROM_UARTIntDisable(UART1_BASE, UART_INT_TX);	// avoid critical section
 		while(ROM_UARTSpaceAvail(UART1_BASE))
 		{
-			UARTprintf("test");
 			if (*Tx_ptr) {
 				ROM_UARTCharPutNonBlocking(UART1_BASE, *Tx_ptr++);
 			} else {
