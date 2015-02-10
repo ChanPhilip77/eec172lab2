@@ -140,14 +140,16 @@ int main(void)
 		ConfigureUART1();
     ROM_FPULazyStackingEnable();
 		int ir_input;
-		char displayed_text;
+		char displayed_text = NULL;
 		uint32_t pui32DataTx[NUM_SSI_DATA];
 		uint32_t pui32DataRx[NUM_SSI_DATA];
     uint32_t ui32Index;
-		char text_msg[32] = "";
+		char text_msg[32] = NULL;
 		int char_num = 0;
 	
+		*Tx_ptr = displayed_text;
 	
+//		ROM_UARTFIFOLevelSet(UART1_BASE, UART_FIFO_TX4_8, UART_FIFO_RX4_8);
     //
     // Set the clocking to run directly from the crystal.
     //
@@ -190,20 +192,24 @@ int main(void)
 
 		GPIOIntEnable(GPIO_PORTB_BASE, GPIO_INT_PIN_2);
 		
+		while(ROM_SSIDataGetNonBlocking(SSI0_BASE, &pui32DataRx[0]))
+    {
+    }
 		
 		
 		
 		IntEnable(INT_GPIOB);
 		IntEnable(INT_TIMER1A);
+		ROM_IntEnable(INT_UART1);
+		ROM_UARTIntEnable(UART1_BASE, UART_INT_RX | UART_INT_RT);
+		
 		TimerIntEnable(TIMER1_BASE, TIMER_TIMA_TIMEOUT);
 		
 		IntMasterEnable();
 		ROM_SSIEnable(SSI0_BASE);
 		
 
-    while(ROM_SSIDataGetNonBlocking(SSI0_BASE, &pui32DataRx[0]))
-    {
-    }
+    
 		
 		begin();
 		fillScreen(BLACK);
@@ -285,6 +291,7 @@ int main(void)
 					write(text_msg[i]);
 				}
 				write('\n');
+//				text_msg[char_num] = NULL;
 				SendStr(text_msg);
 				send_cursor_x = get_x();
 				send_cursor_y = get_y();
@@ -306,12 +313,13 @@ int main(void)
 				for (int i = 0; i < receive_index; i++)
 				{
 					write(receive_msg[i]);
-					receive_msg[i] = 'NULL';	// clear char after write
+					receive_msg[i] = NULL;	// clear char after write
 				}
 				write('\n');
+				UARTprintf("received oled");
 				receive_cursor_x = get_x();
 				receive_cursor_y = get_y();
-				
+				receive_index = 0;
 				
 			}
 			
@@ -387,7 +395,7 @@ void ConfigureUART1(void) {
 
 void UART1IntHandler(void) {
     uint32_t ui32Status;
-		receive_index = 0;
+		
 
 
     ui32Status = ROM_UARTIntStatus(UART1_BASE, true);
@@ -400,23 +408,26 @@ void UART1IntHandler(void) {
 			if (*Tx_ptr) {
 
 				// We can use NonBlocking Put since we know space is available.
-			
+			UARTprintf("send1\n");
 				ROM_UARTCharPutNonBlocking(UART1_BASE, *Tx_ptr++);
 			} else {
+				UARTprintf("send2\n");
 				Tx_done = true;
 		    ROM_UARTIntDisable(UART1_BASE, UART_INT_TX);
 				break;
 			}
 		}
-	
+		UARTprintf("between\n");
 	// receive
     while(ROM_UARTCharsAvail(UART1_BASE))
     {
-        ROM_UARTCharGet(receive_msg[receive_index]);
+        receive_msg[receive_index] = ROM_UARTCharGetNonBlocking(UART1_BASE);
+				UARTprintf("receive %c\n",receive_msg[receive_index]);
 				receive_index++;
+				
     }
 		received = true;
-		
+
 }
 
 void SendStr( char * Tx_buf) {
@@ -432,7 +443,7 @@ void SendStr( char * Tx_buf) {
 				break;
 			}
 		}
-    ROM_UARTIntEnable(UART1_BASE, UART_INT_TX);
+    ROM_UARTIntEnable(UART1_BASE, UART_INT_RX | UART_INT_RT);
 }
 
 
@@ -875,11 +886,11 @@ char char_selector(int code, int reps)
 		case CTRL_RIGHT:
 			break;
 		case CTRL_MUTE:
-			temp = 'NULL';
+			temp = NULL;
 			send_key = 1;
 			break;
 		case CTRL_ENTER:
-			temp = 'NULL';
+			temp = NULL;
 			send_key = 1;
 			break;
 		default:
