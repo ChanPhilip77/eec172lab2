@@ -365,7 +365,7 @@ void ConfigureUART(void)
     //
     // Initialize the UART for console I/O.
     //
-    UARTStdioConfig(0, 115200, 16000000);
+    UARTStdioConfig(0, 9600, 16000000);
 }
 
 void ConfigureUART1(void) {
@@ -388,7 +388,7 @@ void ConfigureUART1(void) {
 
     // Initialize UART1
     //
-		ROM_UARTConfigSetExpClk(UART1_BASE, 16000000, 115200,
+		ROM_UARTConfigSetExpClk(UART1_BASE, 16000000, 9600,
                             (UART_CONFIG_WLEN_8 | UART_CONFIG_STOP_ONE |
                              UART_CONFIG_PAR_NONE));
 }
